@@ -1,31 +1,50 @@
-import requests
+import os
+import sys
+import tempfile
+import shutil
+import subprocess
 
-# 깃헙에 있는 파이썬 파일의 'Raw' 주소 (예: https://raw.githubusercontent.com/...)
-github_file_url = "여기에 깃헙 Raw 파일 주소를 입력하세요. (예: https://raw.githubusercontent.com/user/repo/branch/module.py)"
+repo_url = 'https://github.com/eunkeeyeo/github_chk.git'
+repo_name = "github_chk"  # 'import' 시 사용할 모듈 이름 (폴더 이름)
+
+# 1. 임시 디렉토리 생성
+temp_dir = tempfile.mkdtemp()
+clone_path = os.path.join(temp_dir, repo_name)
 
 try:
-    # 1. 파일 내용 다운로드
-    response = requests.get(github_file_url)
-    response.raise_for_status()  # HTTP 오류가 발생하면 예외 발생
+    # 2. Git을 사용하여 레포지토리 복제
+    print(f"[{repo_name}] 깃헙에서 레포지토리 복제 중...")
+    subprocess.check_call(['git', 'clone', repo_url, clone_path])
 
-    # 2. 다운로드한 내용을 파이썬 모듈로 실행/로드
-    # 이 코드를 로드할 딕셔너리를 정의합니다.
-    module_namespace = {}
+    # 3. 임시 경로를 파이썬 모듈 검색 경로에 추가
+    sys.path.append(clone_path)
 
-    # exec() 함수로 코드를 실행합니다.
-    exec(response.text, module_namespace)
+    # 4. 모듈 불러오기
+    # 레포지토리 안에 있는 모듈 이름(예: 'my_module')으로 import 합니다.
+    # import my_module
+    # my_module.some_function()
 
-    # 3. 로드된 네임스페이스에서 함수/클래스 접근
-    # 'module_namespace'에서 원하는 함수나 클래스를 가져옵니다.
-    # 만약 깃헙 파일에 'hello_world'라는 함수가 있었다면:
-    if 'hello_world' in module_namespace:
-        hello_function = module_namespace['hello_world']
-        hello_function()
-    else:
-        print("원하는 함수를 찾을 수 없습니다.")
+    print(f"[{repo_name}] 모듈 임시로 로드 완료. 이제 import하여 사용 가능합니다.")
+    import printing_sth
 
-except requests.exceptions.RequestException as e:
-    print(f"다운로드 중 오류가 발생했습니다: {e}")
+    # 이제 모듈 내의 함수를 호출할 수 있습니다.
 
-# exec() 사용 시 주의사항:
-# ❗ exec()는 다운로드한 코드를 실행하므로, 신뢰할 수 없는 출처의 코드를 실행하면 보안상 심각한 위험이 있을 수 있습니다.
+    # 1) 함수 호출 예시:
+    message = "깃헙 모듈 활용 테스트!"
+    printing_sth.print_message(message)
+    # 예상 출력: 모듈에서 출력됨: 깃헙 모듈 활용 테스트!
+
+    # 2) 다른 함수 호출 예시:
+    result = printing_sth.calculate_sum(5, 7)
+    print(f"계산 결과: {result}")
+    # 예상 출력: 계산 결과: 12
+
+
+
+    # 5. 작업 후 경로 제거 (프로그램 종료 시 자동으로 사라지지만 명시적으로 제거 가능)
+    sys.path.remove(clone_path)
+
+finally:
+    # 6. 임시 디렉토리 정리
+    shutil.rmtree(temp_dir, ignore_errors=True)
+    print(f"[{repo_name}] 임시 디렉토리 정리 완료.")
